@@ -5,7 +5,7 @@
 			$this->setOption('filter:support', '2.0');
 
 			// there is no way to choose a "Triangle" filter with "thumbnail" via Imagick
-			// so, recreate the IM Triangle function here
+			// so, recreate the IM thumbnail function here
 			// https://github.com/mkoppanen/imagick/issues/90
 			$SampleFactor = 5;
 			$filter = imagick::FILTER_TRIANGLE;
@@ -55,6 +55,7 @@
 				$this->setImageProperty('Thumb::Image::Height', '');
 				$this->setImageProperty('Thumb::Document::Pages', '');
 			}
+			// end fake thumbnail function
 
 			if ($optim) {
 				$this->unsharpMaskImage(0.25, 0.08, 8.3, 0.045);

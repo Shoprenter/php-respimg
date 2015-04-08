@@ -1,6 +1,17 @@
 {
     "name": "nwtn/php-respimg",
     "description": "A responsive image workflow for optimizing and resizing your images",
+    "version": "0.0.1",
+    "keywords": [
+        "responsive images",
+        "respimg",
+        "responsive web design",
+        "rwd",
+        "imagemagick",
+        "imagick",
+        "resize"
+    ],
+    "homepage": "https://github.com/nwtn/php-respimg/",
     "license": "MIT",
     "authors": [
         {
@@ -9,5 +20,19 @@
         }
     ],
     "minimum-stability": "dev",
-    "require": {}
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/nwtn/php-respimg/"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "ext-imagick": "*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Respimg": "src/"
+        }
+    }
 }

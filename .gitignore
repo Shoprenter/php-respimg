@@ -1,0 +1,4 @@
+**/._DS_Store
+composer.lock
+tests/test-300.jpg
+vendor
