@@ -1,6 +1,6 @@
 <?php
 
-	require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Composer autoload
+	require_once __DIR__ . '/../src/Respimg.php';
 
 	$image = new Respimg(__DIR__ . '/test.jpg');
 	$image->betterResize(300, 0, false);
