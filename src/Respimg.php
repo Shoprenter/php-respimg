@@ -1,5 +1,15 @@
 <?php
 
+	# php-respimg
+	# https://github.com/nwtn/php-respimg
+	#
+	# © David Newton
+	# david@davidnewton.ca
+	#
+	# For the full license information, view the LICENSE file that was distributed
+	# with this source code.
+
+
 	class Respimg extends Imagick {
 		public function betterResize($columns, $rows, $optim) {
 			$this->setOption('filter:support', '2.0');
@@ -71,9 +81,7 @@
 			$this->setOption('png:exclude-chunk', 'all');
 			$this->setInterlaceScheme(imagick::INTERLACE_NO);
 
-			$this->setColorspace(13);
-			$this->setImageColorspace(13);
-			$this->transformImageColorspace(13);
+			$this->setColorspace(imagick::COLORSPACE_SRGB);
 
 			if (!$optim) {
 				$this->stripImage();
