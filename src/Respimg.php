@@ -22,6 +22,108 @@
 
 
 		/**
+		 * Optimizes the image without reducing quality.
+		 *
+		 * This function calls up to four external programs, which must be installed and available in the $PATH:
+		 *
+		 * * SVGO
+		 * * image_optim
+		 * * picopt
+		 * * ImageOptim
+		 *
+		 * Note that these are executed using PHP’s `exec` command, so there may be security implications.
+		 *
+		 * @param	string	$path			The path to the file or directory that should be optimized.
+		 * @param	integer	$svgo			The number of times to optimize using SVGO.
+		 * @param	integer	$image_optim	The number of times to optimize using image_optim.
+		 * @param	integer	$picopt			The number of times to optimize using picopt.
+		 * @param	integer	$imageOptim		The number of times to optimize using ImageOptim.
+		 */
+
+		public static function optimize($path, $svgo = 0, $image_optim = 0, $picopt = 0, $imageOptim = 0) {
+
+			// make sure the path is real
+			if (!file_exists($path)) {
+				return false;
+			}
+			$is_dir = is_dir($path);
+			if (!$is_dir) {
+				$dir = escapeshellarg(substr($path, 0, strrpos($path, '/')));
+				$file = escapeshellarg(substr($path, strrpos($path, '/') + 1));
+			}
+			$path = escapeshellarg($path);
+
+			// make sure we got some ints up in here
+			$svgo = (int) $svgo;
+			$image_optim = (int) $image_optim;
+			$picopt = (int) $picopt;
+			$imageOptim = (int) $imageOptim;
+
+			// create some vars to store output
+			$output = array();
+			$return_var = 0;
+
+			// if we’re using image_optim, we need to create the YAML config file
+			if ($image_optim > 0) {
+				$yml = tempnam('/tmp', 'yml');
+				file_put_contents($yml, "verbose: true\njpegtran:\n  progressive: false\noptipng:\n  level: 7\n  interlace: false\npngcrush:\n  fix: true\n  brute: true\npngquant:\n  speed: 11\n");
+			}
+
+			// do the svgo optimizations
+			for ($i = 0; $i < $svgo; $i++) {
+				if ($is_dir) {
+					$command = escapeshellcmd('svgo -f ' . $path . ' --disable removeUnknownsAndDefaults');
+				} else {
+					$command = escapeshellcmd('svgo -i ' . $path . ' --disable removeUnknownsAndDefaults');
+				}
+				exec($command, $output, $return_var);
+
+				if ($return_var != 0) {
+					return false;
+				}
+			}
+
+			// do the image_optim optimizations
+			for ($i = 0; $i < $image_optim; $i++) {
+				$command = escapeshellcmd('image_optim -r ' . $path . ' --config-paths ' . $yml);
+				exec($command, $output, $return_var);
+
+				if ($return_var != 0) {
+					return false;
+				}
+			}
+
+			// do the picopt optimizations
+			for ($i = 0; $i < $picopt; $i++) {
+				$command = escapeshellcmd('picopt -r ' . $path);
+				exec($command, $output, $return_var);
+
+				if ($return_var != 0) {
+					return false;
+				}
+			}
+
+			// do the ImageOptim optimizations
+			// ImageOptim can’t handle the path with single quotes, so we have to strip them
+			// ImageOptim-CLI has an issue where it only works with a directory, not a single file
+			for ($i = 0; $i < $imageOptim; $i++) {
+				if ($is_dir) {
+					$command = escapeshellcmd('imageoptim -d ' . $path . ' -q');
+				} else {
+					$command = escapeshellcmd('find ' . $dir . ' -name ' . $file) . ' | imageoptim';
+				}
+				exec($command, $output, $return_var);
+
+				if ($return_var != 0) {
+					return false;
+				}
+			}
+
+			return $output;
+		}
+
+
+		/**
 		 * Resizes the image using smart defaults for high quality and low file size.
 		 *
 		 * This function is basically equivalent to:
