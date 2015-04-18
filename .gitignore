@@ -1,4 +1,4 @@
 **/._DS_Store
+bin
 composer.lock
-tests/test-300.jpg
 vendor

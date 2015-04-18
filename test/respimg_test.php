@@ -20,6 +20,8 @@
 
 	// load the library
 	require_once __DIR__ . '/../src/Respimg.php';
+	use nwtn\Respimg;
+
 
 	// define the types of raster files we’re allowing
 	$exts = array(
@@ -55,7 +57,21 @@
 		}
 	}
 
-	// TODO: rasterize SVGs
+	// rasterize SVGs
+	if ($dir = opendir($path_svg_i)) {
+		while (($file = readdir($dir)) !== false) {
+			$base = pathinfo($file, PATHINFO_BASENAME);
+			$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+			if ($ext === 'svg') {
+				foreach ($widths as $w) {
+					echo 'Rasterizing ' . $file . ' to ' . $w . '…';
+					Respimg::rasterize($path_svg_i . '/' . $file, $path_svg_o . '/', $w, 0);
+					echo "OK\n";
+				}
+			}
+		}
+	}
 
 	// copy SVGs
 	if ($dir = opendir($path_svg_i)) {

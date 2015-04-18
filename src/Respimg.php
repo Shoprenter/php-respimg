@@ -1,5 +1,15 @@
 <?php
 
+	namespace nwtn;
+	use JonnyW\PhantomJs\Client as Client;
+	use JonnyW\PhantomJs\DependencyInjection\ServiceContainer as ServiceContainer;
+	use JonnyW\PhantomJs\Message\Request as Request;
+
+	if (!class_exists('Client') || !class_exists('ServiceContainer')) {
+		require_once(__DIR__ . '/../vendor/autoload.php');
+	}
+
+
 	/**
 	 * An Imagick extension to provide better (higher quality, lower file size) image resizes.
 	 *
@@ -18,7 +28,7 @@
 	 * @version		1.0.0
 	 */
 
-	class Respimg extends Imagick {
+	class Respimg extends \Imagick {
 
 
 		/**
@@ -32,6 +42,8 @@
 		 * * ImageOptim
 		 *
 		 * Note that these are executed using PHP’s `exec` command, so there may be security implications.
+		 *
+		 * @access	public
 		 *
 		 * @param	string	$path			The path to the file or directory that should be optimized.
 		 * @param	integer	$svgo			The number of times to optimize using SVGO.
@@ -120,6 +132,80 @@
 			}
 
 			return $output;
+
+		}
+
+
+		/**
+		 * Rasterizes an SVG image to a PNG.
+		 *
+		 * Uses phantomjs to save the SVG as a PNG image at the specified size.
+		 *
+		 * @access	public
+		 *
+		 * @param	string	$file			The path to the file that should be rasterized.
+		 * @param	string	$dest			The path to the directory where the output PNG should be saved.
+		 * @param	integer	$columns		The number of columns in the output image. 0 = maintain aspect ratio based on $rows.
+		 * @param	integer	$rows			The number of rows in the output image. 0 = maintain aspect ratio based on $columns.
+		 */
+
+		public static function rasterize($file, $dest, $columns, $rows) {
+
+			// check the input
+			if (!file_exists($file)) {
+				return false;
+			}
+
+			if (!file_exists($dest) || !is_dir($dest)) {
+				return false;
+			}
+
+			// figure out the output width and height
+			$svgTmp = new Respimg($file);
+			$width = (double) $svgTmp->getImageWidth();
+			$height = (double) $svgTmp->getImageHeight();
+			$new_width = $columns;
+			$new_height = $rows;
+
+			$x_factor = $columns / $width;
+			$y_factor = $rows / $height;
+			if ($rows < 1) {
+				$new_height = round($x_factor * $height);
+			} elseif ($columns < 1) {
+				$new_width = round($y_factor * $width);
+			}
+
+			// get the svg data
+			$svgdata = file_get_contents($file);
+
+			// figure out some path stuff
+			$dest = rtrim($dest, '/');
+			$filename = substr($file, strrpos($file, '/') + 1);
+			$filename_base = substr($filename, 0, strrpos($filename, '.'));
+
+			// setup the request
+			$client = Client::getInstance();
+
+			$serviceContainer = ServiceContainer::getInstance();
+			$procedureLoaderFactory = $serviceContainer->get('procedure_loader_factory');
+			$procedureLoader = $procedureLoaderFactory->createProcedureLoader(__DIR__);
+			$client->getProcedureLoader()->addLoader($procedureLoader);
+
+			$request = new RespimgCaptureRequest();
+			$request->setType('svg2png');
+			$request->setMethod('GET');
+			$request->setSVG(base64_encode($svgdata));
+			$request->setViewportSize($new_width, $new_height);
+			$request->setRasterFile($dest . '/' . $filename_base . '-w' . $new_width . '.png');
+			$request->setWidth($new_width);
+			$request->setHeight($new_height);
+
+			$response = $client->getMessageFactory()->createResponse();
+
+			// send + return
+			$client->send($request, $response);
+			return true;
+
 		}
 
 
@@ -132,14 +218,17 @@
 		 *
 		 * $optim == false: `mogrify -path OUTPUT_PATH -filter Triangle -define filter:support=2.0 -thumbnail OUTPUT_WIDTH -unsharp 0.25x0.25+8+0.065 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off -define png:compression-filter=5 -define png:compression-level=9 -define png:compression-strategy=1 -define png:exclude-chunk=all -interlace none -colorspace sRGB -strip INPUT_PATH`
 		 *
-		 * @param	integer	$columns	The number of columns in the output image. 0 = maintain aspect ratio based on $rows.
-		 * @param	integer	$rows		The number of rows in the output image. 0 = maintain aspect ratio based on $columns.
-		 * @param	bool	$optim		Whether you intend to perform optimization on the resulting image. Note that setting this to `true` doesn’t actually perform any optimization.
+		 * @access	public
+		 *
+		 * @param	integer	$columns		The number of columns in the output image. 0 = maintain aspect ratio based on $rows.
+		 * @param	integer	$rows			The number of rows in the output image. 0 = maintain aspect ratio based on $columns.
+		 * @param	bool	$optim			Whether you intend to perform optimization on the resulting image. Note that setting this to `true` doesn’t actually perform any optimization.
 		 */
 
 		public function smartResize($columns, $rows, $optim = false) {
+
 			$this->setOption('filter:support', '2.0');
-			$this->thumbnailImage($columns, $rows, false, false, imagick::FILTER_TRIANGLE);
+			$this->thumbnailImage($columns, $rows, false, false, \Imagick::FILTER_TRIANGLE);
 			if ($optim) {
 				$this->unsharpMaskImage(0.25, 0.08, 8.3, 0.045);
 			} else {
@@ -152,11 +241,12 @@
 			$this->setOption('png:compression-level', '9');
 			$this->setOption('png:compression-strategy', '1');
 			$this->setOption('png:exclude-chunk', 'all');
-			$this->setInterlaceScheme(imagick::INTERLACE_NO);
-			$this->setColorspace(imagick::COLORSPACE_SRGB);
+			$this->setInterlaceScheme(\Imagick::INTERLACE_NO);
+			$this->setColorspace(\Imagick::COLORSPACE_SRGB);
 			if (!$optim) {
 				$this->stripImage();
 			}
+
 		}
 
 
@@ -173,37 +263,40 @@
 		 *
 		 * Note: <https://github.com/mkoppanen/imagick/issues/90> has been filed for this issue.
 		 *
-		 * @param	integer	$columns	The number of columns in the output image. 0 = maintain aspect ratio based on $rows.
-		 * @param	integer	$rows		The number of rows in the output image. 0 = maintain aspect ratio based on $columns.
-		 * @param	bool	$bestfit	Treat $columns and $rows as a bounding box in which to fit the image.
-		 * @param	bool	$fill		Fill in the bounding box with the background colour.
-		 * @param	integer	$filter		The resampling filter to use. Refer to the list of filter constants at <http://php.net/manual/en/imagick.constants.php>.
+		 * @access	public
+		 *
+		 * @param	integer	$columns		The number of columns in the output image. 0 = maintain aspect ratio based on $rows.
+		 * @param	integer	$rows			The number of rows in the output image. 0 = maintain aspect ratio based on $columns.
+		 * @param	bool	$bestfit		Treat $columns and $rows as a bounding box in which to fit the image.
+		 * @param	bool	$fill			Fill in the bounding box with the background colour.
+		 * @param	integer	$filter			The resampling filter to use. Refer to the list of filter constants at <http://php.net/manual/en/imagick.constants.php>.
 		 *
 		 * @return	bool	Indicates whether the operation was performed successfully.
 		 */
 
-		public function thumbnailImage($columns, $rows, $bestfit = false, $fill = false, $filter = imagick::FILTER_TRIANGLE) {
+		public function thumbnailImage($columns, $rows, $bestfit = false, $fill = false, $filter = \Imagick::FILTER_TRIANGLE) {
+
 			// sample factor; defined in original ImageMagick thumbnailImage function
 			// the scale to which the image should be resized using the `sample` function
 			$SampleFactor = 5;
 
 			// filter whitelist
 			$filters = array(
-				imagick::FILTER_POINT,
-				imagick::FILTER_BOX,
-				imagick::FILTER_TRIANGLE,
-				imagick::FILTER_HERMITE,
-				imagick::FILTER_HANNING,
-				imagick::FILTER_HAMMING,
-				imagick::FILTER_BLACKMAN,
-				imagick::FILTER_GAUSSIAN,
-				imagick::FILTER_QUADRATIC,
-				imagick::FILTER_CUBIC,
-				imagick::FILTER_CATROM,
-				imagick::FILTER_MITCHELL,
-				imagick::FILTER_LANCZOS,
-				imagick::FILTER_BESSEL,
-				imagick::FILTER_SINC
+				\Imagick::FILTER_POINT,
+				\Imagick::FILTER_BOX,
+				\Imagick::FILTER_TRIANGLE,
+				\Imagick::FILTER_HERMITE,
+				\Imagick::FILTER_HANNING,
+				\Imagick::FILTER_HAMMING,
+				\Imagick::FILTER_BLACKMAN,
+				\Imagick::FILTER_GAUSSIAN,
+				\Imagick::FILTER_QUADRATIC,
+				\Imagick::FILTER_CUBIC,
+				\Imagick::FILTER_CATROM,
+				\Imagick::FILTER_MITCHELL,
+				\Imagick::FILTER_LANCZOS,
+				\Imagick::FILTER_BESSEL,
+				\Imagick::FILTER_SINC
 			);
 
 			// Parse parameters given to function
@@ -219,7 +312,7 @@
 
 			// Set a default filter if an acceptable one wasn’t passed
 			if (!in_array($filter, $filters)) {
-				$filter = imagick::FILTER_TRIANGLE;
+				$filter = \Imagick::FILTER_TRIANGLE;
 			}
 
 			// figure out the output width and height
@@ -268,15 +361,15 @@
 			}
 
 			// if the alpha channel is not defined, make it opaque
-			if ($this->getImageAlphaChannel() == imagick::ALPHACHANNEL_UNDEFINED) {
-				$this->setImageAlphaChannel(imagick::ALPHACHANNEL_OPAQUE);
+			if ($this->getImageAlphaChannel() == \Imagick::ALPHACHANNEL_UNDEFINED) {
+				$this->setImageAlphaChannel(\Imagick::ALPHACHANNEL_OPAQUE);
 			}
 
 			// set the image’s bit depth to 8 bits
 			$this->setImageDepth(8);
 
 			// turn off interlacing
-			$this->setInterlaceScheme(imagick::INTERLACE_NO);
+			$this->setInterlaceScheme(\Imagick::INTERLACE_NO);
 
 			// Strip all profiles except color profiles.
 			foreach ($this->getImageProfiles('*', true) as $key => $value) {
@@ -324,8 +417,188 @@
 			}
 
 			return true;
+
 		}
 
+	}
+
+
+
+
+
+	/**
+	 * Extension of PHP PhantomJs Request class by Jon Wenmoth <contact@jonnyw.me>
+	 *
+	 * Extends the normal request to pass information relevant to rendering/saving an SVG.
+	 *
+	 * @author		David Newton <david@davidnewton.ca>
+	 * @copyright	2015 David Newton
+	 * @license		https://raw.githubusercontent.com/nwtn/php-respimg/master/LICENSE MIT
+	 * @version		1.0.0
+	 */
+
+	class RespimgCaptureRequest extends Request {
+
+		/**
+		 * Path/filename of output image
+		 *
+		 * @var		string
+		 * @access	protected
+		 */
+
+		protected $rasterFile;
+
+
+		/**
+		 * Width of PNG output
+		 *
+		 * @var		int
+		 * @access	protected
+		 */
+
+		protected $width;
+
+
+		/**
+		 * Height of PNG output
+		 *
+		 * @var		int
+		 * @access	protected
+		 */
+
+		protected $height;
+
+
+		/**
+		 * SVG data
+		 *
+		 * @var		string
+		 * @access	protected
+		 */
+
+		protected $svgdata;
+
+
+		/**
+		 * Get height.
+		 *
+		 * @access	public
+		 *
+		 * @return	int
+		 */
+
+		public function getHeight() {
+			return (int) $this->height;
+		}
+
+
+		/**
+		 * Get the path/filename of the output PNG
+		 *
+		 * @access	public
+		 *
+		 * @return	string
+		 */
+
+		public function getRasterFile() {
+			return $this->rasterFile;
+		}
+
+
+		/**
+		 * Get SVG data.
+		 *
+		 * @access	public
+		 *
+		 * @return	string
+		 */
+
+		public function getSVG() {
+			return (string) $this->svgdata;
+		}
+
+
+		/**
+		 * Get width.
+		 *
+		 * @access	public
+		 *
+		 * @return	int
+		 */
+
+		public function getWidth() {
+			return (int) $this->width;
+		}
+
+
+		/**
+		 * Set height.
+		 *
+		 * @access	public
+		 *
+		 * @param	int		$height			Height
+		 *
+		 * @return	\JonnyW\PhantomJs\Message\AbstractRequest
+		 */
+
+		public function setHeight($height) {
+			$this->height  = (int) $height;
+			return $this;
+		}
+
+
+		/**
+		 * Set the path/filename of the output PNG
+		 *
+		 * @access public
+		 *
+		 * @param	string	$file			The path/filename
+		 *
+		 * @throws	\JonnyW\PhantomJs\Exception\NotWritableException
+		 * @return	\JonnyW\PhantomJs\Message\CaptureRequest
+		 */
+
+		public function setRasterFile($file) {
+			if (!is_writable(dirname($file))) {
+				throw new \JonnyW\PhantomJs\Exception\NotWritableException(sprintf('Capture file is not writeable by PhantomJs: %s', $file));
+			}
+			$this->rasterFile = $file;
+			return $this;
+		}
+
+
+		/**
+		 * Set SVG data
+		 *
+		 * This sets the base64-encoded SVG data, which will be used to build a data URI.
+		 *
+		 * @access	public
+		 *
+		 * @param	string	$svgdata		base64-encoded SVG data
+		 *
+		 * @return	string
+		 */
+
+		public function setSVG($svgdata) {
+			$this->svgdata = $svgdata;
+			return $this;
+		}
+
+
+		/**
+		 * Set width.
+		 *
+		 * @access	public
+		 *
+		 * @param	int		$width			Width
+		 *
+		 * @return	\JonnyW\PhantomJs\Message\AbstractRequest
+		 */
+
+		public function setWidth($width) {
+			$this->width  = (int) $width;
+			return $this;
+		}
 
 	}
 
