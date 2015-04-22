@@ -15,7 +15,7 @@
 	 * @author		David Newton <david@davidnewton.ca>
 	 * @copyright	2015 David Newton
 	 * @license		https://raw.githubusercontent.com/nwtn/php-respimg/master/LICENSE MIT
-	 * @version		1.0.0
+	 * @version		1.0.1
 	 */
 
 	// load the library

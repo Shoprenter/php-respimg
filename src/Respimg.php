@@ -10,7 +10,13 @@
 	use JonnyW\PhantomJs\Message\Request as Request;
 
 	if (!class_exists('Client') || !class_exists('ServiceContainer')) {
-		require_once(__DIR__ . '/../vendor/autoload.php');
+		if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+			require_once(__DIR__ . '/../vendor/autoload.php');
+		} elseif (file_exists(__DIR__ . '/../../../autoload.php')) {
+			require_once(__DIR__ . '/../../../autoload.php');
+		} else {
+			die('Couldn’t load required libraries.');
+		}
 	}
 
 
@@ -26,7 +32,7 @@
 	 * @author		David Newton <david@davidnewton.ca>
 	 * @copyright	2015 David Newton
 	 * @license		https://raw.githubusercontent.com/nwtn/php-respimg/master/LICENSE MIT
-	 * @version		1.0.0
+	 * @version		1.0.1
 	 */
 
 	class Respimg extends \Imagick {
@@ -435,7 +441,7 @@
 	 * @author		David Newton <david@davidnewton.ca>
 	 * @copyright	2015 David Newton
 	 * @license		https://raw.githubusercontent.com/nwtn/php-respimg/master/LICENSE MIT
-	 * @version		1.0.0
+	 * @version		1.0.1
 	 */
 
 	class RespimgCaptureRequest extends Request {

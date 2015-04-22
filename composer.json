@@ -1,7 +1,7 @@
 {
     "name": "nwtn/php-respimg",
     "description": "A responsive image workflow for optimizing and resizing your images",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "keywords": [
         "responsive images",
         "respimg",
