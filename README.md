@@ -6,6 +6,18 @@ See also [grunt-respimg](https://www.npmjs.com/package/grunt-respimg).
 
 Full documentation available at <https://rawgit.com/nwtn/php-respimg/master/docs/index.html>.
 
+## Requirements/dependencies
+
+* [PHP >= 5.3.0](http://php.net/)
+* [ImageMagick](http://imagemagick.org/)
+* [ext-imagick](http://php.net/manual/en/book.imagick.php)
+* For SVG rasterization: [jonnyw/php-phantomjs 3.1.5](https://github.com/jonnnnyw/php-phantomjs)
+* For optimization, depending on what settings you pass:
+	* [SVGO](https://github.com/svg/svgo)
+	* [image_optim](https://github.com/toy/image_optim)
+	* [picopt](https://github.com/ajslater/picopt)
+	* [ImageOptim](https://imageoptim.com/)
+
 ## Examples
 
 To resize one raster image, without optimization:
