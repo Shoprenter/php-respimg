@@ -1,5 +1,5 @@
 {
-    "name": "d3n972/php-respimg",
+    "name": "shoprenter/php-respimg",
     "description": "A responsive image workflow for optimizing and resizing your images",
     "version": "1.0.1",
     "keywords": [
@@ -11,7 +11,7 @@
         "imagick",
         "resize"
     ],
-    "homepage": "https://github.com/d3n972/php-respimg",
+    "homepage": "https://github.com/Shoprenter/php-respimg",
     "license": "MIT",
     "authors": [
         {
@@ -23,7 +23,7 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/d3n972/php-respimg"
+            "url": "https://github.com/Shoprenter/php-respimg"
         }
     ],
     "require": {
